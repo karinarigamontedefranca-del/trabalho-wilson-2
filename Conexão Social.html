@@ -1,0 +1,871 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Conexão Social</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gloock&family=Hanken+Grotesk:wght@400;500;700&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout concept: palco de vídeo 16:9 (9:16 no celular), cinco capítulos no topo, legendas por palavra, barra de progresso com relógio.
+   Look: noite verde-azulada com luz de lâmpada em ocre, sóbrio e acadêmico. Medidas em "u" (calc(var(--u)*1) = 1% da largura do palco), convertidas no build. */
+:root{
+  color-scheme:dark;
+  --bg:#071719;
+  --stage:#0f2a2d;
+  --stage-2:#17393d;
+  --ink:#f2eee5;
+  --muted:#a8bfbc;
+  --ochre:#f2b84b;
+  --sage:#8dbfa8;
+  --steel:#6aa0a8;
+  --clay:#d98e73;
+  --paper:#ebe7dc;
+  --paper-2:#d9d4c6;
+  --paper-ink:#2b2a26;
+  --line:rgba(242,238,229,.16);
+  --dim:rgba(255,255,255,.13);
+  --panel:rgba(255,255,255,.045);
+  --display:'Gloock',Georgia,'Times New Roman',serif;
+  --body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --hand:'Caveat','Bradley Hand','Segoe Print',cursive;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body)}
+button{font:inherit;color:inherit}
+a{color:var(--ochre)}
+.app{max-width:1240px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--bg)}
+
+/* ---------- palco ---------- */
+.stage{position:relative;container-type:size;aspect-ratio:16/9;width:100%;max-width:min(1200px,max(560px,calc((100vh - 130px) * 16 / 9)));margin:0 auto;overflow:hidden;border-radius:14px;border:1px solid var(--line);
+  background:radial-gradient(60% 80% at 88% 8%,rgba(242,184,75,.16),transparent 60%),radial-gradient(70% 70% at 5% 100%,rgba(141,191,168,.12),transparent 60%),var(--stage)}
+.brand{--u:1cqw;position:absolute;z-index:3;top:calc(var(--u)*2.4);left:calc(var(--u)*5);display:flex;align-items:center;gap:calc(var(--u)*.9);font-size:calc(var(--u)*1.45);letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.brand i{width:calc(var(--u)*1.1);height:calc(var(--u)*1.1);border-radius:50%;background:var(--ochre);box-shadow:0 0 calc(var(--u)*1.6) var(--ochre);animation:rec 1.6s ease-in-out infinite alternate}
+@keyframes rec{from{opacity:.35}}
+
+/* capítulos: números sempre visíveis, nome só no capítulo atual */
+.chap{--u:1cqw;position:absolute;z-index:3;top:calc(var(--u)*2.2);right:calc(var(--u)*5);display:flex;align-items:center;gap:calc(var(--u)*1.6);pointer-events:none;font-size:calc(var(--u)*1.3);text-transform:uppercase;font-weight:700;letter-spacing:.12em;color:var(--muted)}
+.chap span{position:relative;display:inline-flex;align-items:baseline;padding-bottom:calc(var(--u)*.7);opacity:.38;transition:opacity .5s,color .5s}
+.chap b{font-family:var(--display);font-weight:400;font-size:calc(var(--u)*1.7);letter-spacing:0}
+.chap i{font-style:normal;display:inline-block;max-width:0;overflow:hidden;white-space:nowrap;opacity:0;margin-left:0;transition:max-width .7s ease,opacity .5s,margin .5s}
+.chap span::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--u)*.25);border-radius:calc(var(--u)*1);background:var(--ochre);transform:scaleX(0);transform-origin:left;transition:transform .7s ease}
+.chap span.done{opacity:.7}
+.chap span.on{opacity:1;color:var(--ochre)}
+.chap span.on i{max-width:calc(var(--u)*22);opacity:1;margin-left:calc(var(--u)*.8)}
+.chap span.on::after{transform:scaleX(1)}
+
+/* partículas de fundo */
+.amb{--u:1cqw;position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.amb i{position:absolute;bottom:calc(var(--u)*-2);left:var(--x);width:calc(var(--u)*var(--sz));height:calc(var(--u)*var(--sz));border-radius:50%;background:var(--ochre);opacity:0;animation:drift var(--t) linear var(--dl) infinite}
+@keyframes drift{0%{transform:translateY(0);opacity:0}15%{opacity:.32}85%{opacity:.2}100%{transform:translateY(calc(var(--u)*-62));opacity:0}}
+
+.slide{--u:1cqw;position:absolute;inset:0;display:flex;flex-direction:column;justify-content:safe center;gap:calc(var(--u)*2.6);padding:calc(var(--u)*7.5) calc(var(--u)*6) calc(var(--u)*11.5);opacity:0;visibility:hidden;transition:opacity .5s ease,visibility 0s linear .5s}
+.slide.active{opacity:1;visibility:visible;transition-delay:0s}
+.row{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*4)}
+.col{display:flex;flex-direction:column;gap:calc(var(--u)*1.6);min-width:0}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*2.6)}
+
+/* tipografia */
+h1,h2,h3,h4{margin:0;font-weight:400;text-wrap:balance}
+h1{font-family:var(--display);font-size:calc(var(--u)*8.6);line-height:1}
+h2{font-family:var(--display);font-size:calc(var(--u)*4.4);line-height:1.08}
+h3{font-family:var(--body);font-weight:700;font-size:calc(var(--u)*2.1);line-height:1.2}
+p{margin:0}
+.eyebrow{font-size:calc(var(--u)*1.4);letter-spacing:.18em;text-transform:uppercase;color:var(--ochre);font-weight:700}
+.lead{font-size:calc(var(--u)*2.5);line-height:1.4;color:var(--ink);max-width:calc(var(--u)*42)}
+.sub{font-size:calc(var(--u)*1.9);line-height:1.45;color:var(--muted);max-width:calc(var(--u)*42)}
+.note{font-size:calc(var(--u)*1.35);line-height:1.4;color:var(--muted)}
+em{font-style:normal;color:var(--ochre)}
+.mb{display:none}
+
+/* legenda estilo vídeo */
+.cap{position:absolute;z-index:2;left:0;right:0;bottom:0;padding:calc(var(--u)*5) calc(var(--u)*6) calc(var(--u)*2.4);text-align:center;font-size:calc(var(--u)*1.9);line-height:1.4;font-weight:500;color:var(--ink);background:linear-gradient(to top,rgba(5,16,18,.9),rgba(5,16,18,0))}
+.cap span{display:inline-block}
+.nocap .cap{display:none}
+
+/* animações: o estado final é o estado natural da página */
+@keyframes rise{from{opacity:0;transform:translateY(calc(var(--u)*2))}}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{opacity:0;transform:scale(.55)}}
+@keyframes grow{from{transform:scaleX(0)}}
+@keyframes growY{from{transform:scaleY(0)}}
+@keyframes lineIn{from{width:0}}
+@keyframes light{from{filter:brightness(.18) saturate(.2);box-shadow:none}}
+@keyframes eq{from{transform:scaleY(.3)}}
+@keyframes scrib{from{stroke-dashoffset:1}}
+@keyframes bob{to{transform:translateY(calc(var(--u)*-.8))}}
+@keyframes drawck{from{stroke-dashoffset:1}}
+@keyframes fly{from{opacity:0;transform:translate(var(--fx,0),var(--fy,0)) scale(.4) rotate(18deg)}}
+@keyframes slidein{from{opacity:0;transform:translateX(calc(var(--u)*-3))}}
+@keyframes flip{0%{opacity:1;transform:rotateY(0)}88%{opacity:1;transform:rotateY(-170deg)}100%{opacity:0;transform:rotateY(-180deg)}}
+@keyframes glow{50%{box-shadow:0 0 calc(var(--u)*5) rgba(242,184,75,.45)}}
+@keyframes blink{50%{opacity:0}}
+@keyframes ripple{from{transform:scale(1);opacity:.8}to{transform:scale(2.7);opacity:0}}
+@keyframes vanish{0%,35%{opacity:1}100%{opacity:.1}}
+@keyframes travel{to{transform:translateX(60px)}}
+@keyframes dotin{from{background:var(--dim);transform:scale(.6)}}
+@keyframes tickon{from{background:var(--dim)}}
+@keyframes sweep{0%{left:0;opacity:1}94%{opacity:1}100%{left:100%;opacity:0}}
+@keyframes pulse{50%{box-shadow:0 0 0 calc(var(--u)*1.1) rgba(242,184,75,0)}}
+
+.slide.active .a{animation:rise .8s var(--d,0s) backwards}
+.slide.active .f{animation:fade .8s var(--d,0s) backwards}
+.slide.active .p{animation:pop .6s var(--d,0s) cubic-bezier(.3,1.5,.5,1) backwards}
+.slide.active .cap span{animation:fade .45s calc(.5s + var(--i) * 70ms) backwards}
+
+/* ---------- Conexão Social: componentes ---------- */
+.row.top{align-items:center}
+.road{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.8) calc(var(--u)*1.8);margin-top:calc(var(--u)*.4);max-width:calc(var(--u)*54)}
+.road span{display:inline-flex;align-items:baseline;gap:calc(var(--u)*.6);font-size:calc(var(--u)*1.4);color:var(--muted)}
+.road b{font-family:var(--display);font-weight:400;color:var(--ochre);font-size:calc(var(--u)*1.9)}
+.panel,.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:calc(var(--u)*1.4);padding:calc(var(--u)*2.4);display:flex;flex-direction:column;gap:calc(var(--u)*1.1);min-width:0}
+.panel p,.card p{font-size:calc(var(--u)*1.6);line-height:1.45;color:var(--muted)}
+.tag{font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--sage)}
+.tag.o{color:var(--ochre)}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*2.4)}
+.card .ic{width:calc(var(--u)*5);height:calc(var(--u)*5);color:var(--ochre);flex:none}
+.card .top{display:flex;align-items:center;gap:calc(var(--u)*1.4)}
+.chip{font-size:calc(var(--u)*1.5);font-weight:500;padding:calc(var(--u)*.7) calc(var(--u)*1.4);border-radius:99px;border:1px solid rgba(242,184,75,.5);background:rgba(242,184,75,.08);color:var(--ink)}
+.chip.alt{border-color:rgba(141,191,168,.55);background:rgba(141,191,168,.09)}
+.chips{display:flex;flex-wrap:wrap;gap:calc(var(--u)*1)}
+.note{font-size:calc(var(--u)*1.35);line-height:1.4;color:var(--muted)}
+
+/* 1 rede animada */
+.net{position:relative;flex:none;width:calc(var(--u)*50)}
+.net svg{display:block;width:100%;height:auto;overflow:visible}
+.net .ln{fill:none;stroke:rgba(242,238,229,.3);stroke-width:.5;stroke-dasharray:1;stroke-dashoffset:0}
+.net .ln.r{stroke:rgba(141,191,168,.55)}
+.net .ln.l{stroke:rgba(242,184,75,.55)}
+.slide.active .net .ln{animation:scrib 1.1s var(--d) ease-out backwards}
+.net .nl{fill:var(--ochre)}.net .nr{fill:var(--sage)}
+.net .nodes circle{transform-box:fill-box;transform-origin:center}
+.slide.active .net .nodes circle{animation:pop .6s var(--d) cubic-bezier(.3,1.5,.5,1) backwards}
+.net .hub{fill:#0f2a2d;stroke:var(--ochre);stroke-width:.7}
+.net .halo{fill:none;stroke:var(--ochre);stroke-width:.4;transform-box:fill-box;transform-origin:center;opacity:0}
+.slide.active .net .halo{animation:ripple 2.8s 2.4s ease-out infinite}
+.net text{font-family:var(--body);font-size:3.6px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;fill:var(--muted)}
+.net .pk{fill:#fff;opacity:0}
+.slide.active .net .pk{animation:flow var(--t) var(--d) linear infinite}
+@keyframes flow{0%{transform:translate(var(--x1),var(--y1));opacity:0}12%{opacity:.95}88%{opacity:.95}100%{transform:translate(var(--x2),var(--y2));opacity:0}}
+
+/* 2 e 3: lacuna entre os dois lados */
+.gapviz{position:relative;width:100%;height:calc(var(--u)*10)}
+.gapviz svg{display:block;width:100%;height:100%;overflow:visible}
+.gapviz .dl{fill:var(--ochre)}.gapviz .dr{fill:var(--sage)}
+.gapviz circle{transform-box:fill-box;transform-origin:center}
+.slide.active .gapviz circle.pp{animation:pop .5s var(--d) cubic-bezier(.3,1.5,.5,1) backwards}
+.gapviz .gl2{stroke:rgba(255,255,255,.4);stroke-width:.5;stroke-dasharray:2 2}
+.gapviz .br{stroke:var(--ochre);stroke-width:.8;fill:none;stroke-dasharray:1;stroke-dashoffset:0;stroke-linecap:round}
+.slide.active .gapviz .br{animation:scrib 1.6s 1.2s ease-in-out backwards}
+.gapviz .q{font-family:var(--display);font-size:9px;fill:var(--ochre)}
+.slide.active .gapviz .q{animation:blink 1.4s ease-in-out infinite}
+.gapviz text.lb{font-family:var(--body);font-size:1.7px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;fill:var(--muted)}
+
+/* 4 participantes */
+.who{align-items:stretch}
+.who .chips{margin-top:calc(var(--u)*.4)}
+.who .chip{font-size:calc(var(--u)*1.45)}
+.slide.active .who .chip{animation:pop .5s var(--d) cubic-bezier(.3,1.5,.5,1) backwards}
+
+/* 5 fluxo */
+.flow{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:calc(var(--u)*2)}
+.flow::before{content:"";position:absolute;left:calc(var(--u)*3);right:calc(var(--u)*3);top:calc(var(--u)*2.9);height:calc(var(--u)*.3);background:var(--line)}
+.flow::after{content:"";position:absolute;left:calc(var(--u)*3);right:calc(var(--u)*3);top:calc(var(--u)*2.9);height:calc(var(--u)*.3);background:var(--ochre);transform-origin:left}
+.slide.active .flow::after{animation:grow 4s .6s ease-in-out backwards}
+.fs{position:relative;z-index:1;display:flex;flex-direction:column;gap:calc(var(--u)*.9);min-width:0}
+.fs .nd{width:calc(var(--u)*5.8);height:calc(var(--u)*5.8);border-radius:50%;display:grid;place-items:center;background:var(--stage-2);border:calc(var(--u)*.3) solid var(--ochre);color:var(--ochre);font-family:var(--display);font-size:calc(var(--u)*2.4)}
+.slide.active .fs .nd{animation:pop .6s var(--d) cubic-bezier(.3,1.5,.5,1) backwards}
+.fs h3{font-size:calc(var(--u)*2.1);margin-top:calc(var(--u)*.5)}
+.fs p{font-size:calc(var(--u)*1.5);line-height:1.42;color:var(--muted)}
+.slide.active .fs h3,.slide.active .fs p{animation:rise .7s var(--d) backwards}
+
+/* 6 tipos de apoio */
+.orbit{position:relative;flex:none;width:calc(var(--u)*58);aspect-ratio:100/62}
+.orbit svg{position:absolute;inset:0;width:100%;height:100%}
+.orbit .sp{stroke:rgba(242,184,75,.4);stroke-width:.35;fill:none;stroke-dasharray:1;stroke-dashoffset:0}
+.slide.active .orbit .sp{animation:scrib .9s var(--d) ease-out backwards}
+.orbit .core{position:absolute;left:50%;top:50%;width:calc(var(--u)*11);height:calc(var(--u)*11);margin:calc(var(--u)*-5.5) 0 0 calc(var(--u)*-5.5);border-radius:50%;display:grid;place-items:center;text-align:center;background:#0f2a2d;border:calc(var(--u)*.3) solid var(--ochre);font-family:var(--display);font-size:calc(var(--u)*2.2);color:var(--ochre);box-shadow:0 0 calc(var(--u)*3) rgba(242,184,75,.3)}
+.slide.active .orbit .core{animation:pop .7s .2s cubic-bezier(.3,1.5,.5,1) backwards}
+.orbit .core::after{content:"";position:absolute;inset:0;border-radius:50%;border:calc(var(--u)*.2) solid var(--ochre);opacity:0}
+.slide.active .orbit .core::after{animation:ripple 2.8s 2s ease-out infinite}
+.orbit .sat{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:calc(var(--u)*1.5);font-weight:500;padding:calc(var(--u)*.7) calc(var(--u)*1.4);border-radius:99px;border:1px solid rgba(141,191,168,.6);background:#12353a;color:var(--ink)}
+.slide.active .orbit .sat{animation:fade .6s var(--d) backwards}
+
+/* 7 social match */
+.radar{position:relative;flex:none;width:calc(var(--u)*34);aspect-ratio:1}
+.radar svg{display:block;width:100%;height:100%;overflow:visible}
+.radar .rg{fill:rgba(242,184,75,.05);stroke:rgba(242,184,75,.45);stroke-width:.4;transform-box:fill-box;transform-origin:center}
+.slide.active .radar .rg{animation:pop .8s var(--d) ease-out backwards}
+.radar .me{fill:var(--ochre)}
+.radar .pn{fill:var(--sage);transform-box:fill-box;transform-origin:center}
+.slide.active .radar .pn{animation:pop .5s var(--d) cubic-bezier(.3,1.5,.5,1) backwards}
+.radar .bd2{fill:#0f2a2d;stroke:var(--ochre);stroke-width:.4}
+.radar text{font-family:var(--body);font-weight:700;font-size:3.6px;fill:var(--ochre);text-anchor:middle}
+.lv{display:grid;gap:calc(var(--u)*.9)}
+.lv span{display:flex;align-items:center;gap:calc(var(--u)*1.1);font-size:calc(var(--u)*1.5);color:var(--ink)}
+.lv b{flex:none;width:calc(var(--u)*2.4);height:calc(var(--u)*2.4);border-radius:50%;display:grid;place-items:center;font-size:calc(var(--u)*1.2);background:var(--ochre);color:#0b2427}
+.gate{display:flex;gap:calc(var(--u)*1.6);align-items:center;border:1px solid rgba(217,142,115,.6);background:rgba(217,142,115,.08);border-radius:calc(var(--u)*1.2);padding:calc(var(--u)*1.4) calc(var(--u)*1.8);font-size:calc(var(--u)*1.5);line-height:1.4;color:var(--ink)}
+.gate svg{flex:none;width:calc(var(--u)*3.6);height:calc(var(--u)*3.6);color:var(--clay)}
+.gate b{color:var(--clay)}
+.slide.active .gate svg{animation:bob .9s ease-in-out infinite alternate}
+
+/* 8 curadoria */
+.stairs{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*2);align-items:end;height:calc(var(--u)*18)}
+.st{position:relative;height:var(--h);border-radius:calc(var(--u)*1) calc(var(--u)*1) 0 0;background:linear-gradient(to top,rgba(242,184,75,.1),rgba(242,184,75,.34));border:1px solid rgba(242,184,75,.5);border-bottom:0;padding:calc(var(--u)*1.4) calc(var(--u)*1.8);display:flex;flex-direction:column;justify-content:flex-start;gap:calc(var(--u)*.4);transform-origin:bottom}
+.st.s2{background:linear-gradient(to top,rgba(141,191,168,.1),rgba(141,191,168,.3));border-color:rgba(141,191,168,.6)}
+.slide.active .st{animation:growY .9s var(--d) cubic-bezier(.3,.9,.3,1) backwards}
+.st h3{font-size:calc(var(--u)*1.9)}
+.st p{font-size:calc(var(--u)*1.4);line-height:1.35;color:var(--muted)}
+
+/* 9 lista com checks */
+.li{display:flex;gap:calc(var(--u)*1.2);align-items:flex-start;font-size:calc(var(--u)*1.55);line-height:1.4;color:var(--ink)}
+.li+.li{margin-top:calc(var(--u)*.8)}
+.li svg{flex:none;width:calc(var(--u)*2.4);height:calc(var(--u)*2.4);color:var(--sage)}
+.li svg path{stroke-dasharray:1;stroke-dashoffset:0}
+.slide.active .li svg path{animation:drawck .6s var(--d) ease-out backwards}
+.panel h3{font-size:calc(var(--u)*2.2)}
+
+/* 10 dois fluxos */
+.split{display:grid;grid-template-columns:1fr auto 1fr;gap:calc(var(--u)*2.4);align-items:stretch}
+.dv{position:relative;width:calc(var(--u)*.3);background:repeating-linear-gradient(to bottom,rgba(255,255,255,.4) 0,rgba(255,255,255,.4) calc(var(--u)*.8),transparent calc(var(--u)*.8),transparent calc(var(--u)*1.5));transform-origin:top}
+.slide.active .dv{animation:growY 1s .3s ease-out backwards}
+.dv span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--stage);padding:calc(var(--u)*.8) 0;writing-mode:vertical-rl;font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--muted);white-space:nowrap}
+.flowline{height:calc(var(--u)*.35);border-radius:calc(var(--u)*1);background:linear-gradient(90deg,var(--c),transparent);transform-origin:left}
+.slide.active .flowline{animation:grow 1.4s var(--d) ease-out backwards}
+
+/* 11 referência */
+.cover{position:relative;flex:none;width:calc(var(--u)*22);aspect-ratio:3/4;border-radius:calc(var(--u)*.8) calc(var(--u)*1.6) calc(var(--u)*1.6) calc(var(--u)*.8);background:linear-gradient(135deg,#1f4a50,#12353a);border:1px solid rgba(242,184,75,.55);padding:calc(var(--u)*3) calc(var(--u)*2.6);display:flex;flex-direction:column;justify-content:space-between;box-shadow:calc(var(--u)*1.2) calc(var(--u)*1.2) 0 calc(var(--u)*-.2) #0a2023,0 calc(var(--u)*3) calc(var(--u)*6) rgba(0,0,0,.45)}
+.cover b{font-family:var(--display);font-weight:400;font-size:calc(var(--u)*4);line-height:1;color:var(--ochre)}
+.cover small{font-size:calc(var(--u)*1.4);line-height:1.4;color:var(--ink);opacity:.85}
+.slide.active .cover{animation:bob 2.4s ease-in-out infinite alternate}
+
+/* 12 piloto */
+.pins{display:grid;grid-template-columns:repeat(8,1fr);gap:calc(var(--u)*.6);width:calc(var(--u)*22)}
+.s12 .row>.col:last-child{flex:none}
+.pins i{display:block;aspect-ratio:1;border-radius:50%;background:var(--sage)}
+.pins i.o{background:transparent;border:calc(var(--u)*.25) dashed var(--muted)}
+.slide.active .pins i{animation:dotin .5s calc(.6s + var(--k) * .22s) backwards}
+.cnt{white-space:nowrap;font-family:var(--display);font-size:calc(var(--u)*6);line-height:1;color:var(--ochre);font-variant-numeric:tabular-nums}
+.cnt small{font-family:var(--body);font-size:calc(var(--u)*2);color:var(--ink);margin-left:calc(var(--u)*.8)}
+
+/* 13 riscos */
+.rk{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*2)}
+.rc{background:var(--panel);border:1px solid var(--line);border-radius:calc(var(--u)*1.4);padding:calc(var(--u)*2) calc(var(--u)*2.2);display:flex;flex-direction:column;gap:calc(var(--u)*.7);min-width:0}
+.rc .tag.r{color:var(--clay)}
+.rc h3{font-size:calc(var(--u)*1.9);min-height:calc(var(--u)*4.6)}
+.rc p{font-size:calc(var(--u)*1.45);line-height:1.42;color:var(--muted)}
+.rc .ar{display:block;height:calc(var(--u)*.25);border-radius:calc(var(--u)*1);background:linear-gradient(90deg,var(--clay),var(--sage));transform-origin:left;margin:calc(var(--u)*.5) 0}
+.slide.active .rc .ar{animation:grow .8s var(--d,1s) ease-out backwards}
+.rc .mit{color:var(--ink)}
+.rc .mit b{color:var(--sage);font-weight:700}
+
+/* 14 e 15 */
+.venn{position:relative;flex:none;width:calc(var(--u)*40)}
+.venn svg{display:block;width:100%;height:auto;overflow:visible}
+.venn circle{transform-box:fill-box;transform-origin:center}
+.venn .vl{fill:rgba(242,184,75,.2);stroke:var(--ochre);stroke-width:.5}
+.venn .vr{fill:rgba(141,191,168,.2);stroke:var(--sage);stroke-width:.5}
+.slide.active .venn .vl{animation:slidein 1s .3s ease-out backwards}
+.slide.active .venn .vr{animation:fly 1s .3s ease-out backwards;--fx:calc(var(--u)*-3)}
+.venn text{font-family:var(--body);font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:2.5px;fill:var(--ink);text-anchor:middle}
+.venn .ct{font-family:var(--display);font-size:5.2px;letter-spacing:0;text-transform:none;fill:var(--ochre)}
+.slide.active .venn .ct{animation:pop .7s 1.5s cubic-bezier(.3,1.5,.5,1) backwards}
+.s14 h1{font-size:calc(var(--u)*5.6);line-height:1.05}
+.trio{display:flex;flex-wrap:nowrap;gap:calc(var(--u)*1.2);white-space:nowrap}
+.trio span{font-size:calc(var(--u)*1.55);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ochre)}
+.trio span+span::before{content:"·";margin-right:calc(var(--u)*1.4);color:var(--muted)}
+.srcs{display:grid;gap:calc(var(--u)*.9);font-size:calc(var(--u)*1.5);line-height:1.45;color:var(--muted);max-width:calc(var(--u)*56)}
+.srcs b{color:var(--ochre);font-weight:700}
+
+/* ---------- controles ---------- */
+.ctrl{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:12px auto 0;max-width:min(1200px,max(560px,calc((100vh - 130px) * 16 / 9)))}
+.ctrl button{flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.05);display:grid;place-items:center;cursor:pointer}
+.ctrl button:hover{background:rgba(255,255,255,.12)}
+.ctrl button:focus-visible,.seg:focus-visible{outline:2px solid var(--ochre);outline-offset:2px}
+.ctrl svg{width:20px;height:20px}
+.ctrl #cc{font-size:12px;font-weight:700;letter-spacing:.04em}
+.ctrl #cc[aria-pressed="false"]{opacity:.5;text-decoration:line-through}
+.segs{flex:1;display:flex;gap:3px;min-width:0}
+.ctrl button.seg{flex:1;width:auto;min-width:0;height:44px;padding:0;border:0;border-radius:0;background:transparent;cursor:pointer;display:flex;align-items:center;place-items:unset;position:relative}
+.ctrl button.seg:hover{background:transparent}
+.seg span{display:block;height:4px;width:0;background:var(--ochre);border-radius:4px;position:relative;z-index:1}
+.seg::after{content:"";position:absolute;left:0;right:0;top:50%;height:4px;margin-top:-2px;background:rgba(255,255,255,.16);border-radius:4px;z-index:0}
+.seg.chs::before{content:"";position:absolute;left:-2px;top:12px;bottom:12px;width:1px;background:rgba(255,255,255,.35)}
+.count{flex:none;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:96px;text-align:right;line-height:1.25}
+
+/* ---------- celular ---------- */
+@media (max-width:720px){
+  .stage{aspect-ratio:9/17.5;max-width:none}
+  .brand{display:none}
+  .chap{--u:2.35cqw;font-size:calc(var(--u)*1.35);gap:calc(var(--u)*1.4);top:calc(var(--u)*2.6);left:calc(var(--u)*5.5);right:auto}
+  .amb{--u:2.35cqw}
+  .slide{--u:2.35cqw;padding:calc(var(--u)*7.5) calc(var(--u)*5.5) calc(var(--u)*15.5);gap:calc(var(--u)*2)}
+  .slide .eyebrow{display:none}
+  .s1 .eyebrow,.s14 .eyebrow{display:block}
+  h1{font-size:calc(var(--u)*7.4)}
+  h2{font-size:calc(var(--u)*4.2)}
+  .lead{font-size:calc(var(--u)*2.3)}
+  .sub{font-size:calc(var(--u)*2)}
+  .cap{font-size:calc(var(--u)*1.75);padding:calc(var(--u)*4) calc(var(--u)*5) calc(var(--u)*2.2)}
+  .row{flex-direction:column;align-items:flex-start;gap:calc(var(--u)*3)}
+  .duo{grid-template-columns:1fr;gap:calc(var(--u)*1.6)}
+  .panel,.card{padding:calc(var(--u)*1.8) calc(var(--u)*2.2)}
+  .panel p,.card p{font-size:calc(var(--u)*1.8)}
+  .note{font-size:calc(var(--u)*1.4)}
+  .net,.venn{width:100%}
+  .road{display:none}
+  .s1 .row{justify-content:center}
+  .gapviz{height:calc(var(--u)*9)}
+  .s2 h2,.s3 h2{font-size:calc(var(--u)*3.5)}
+  .s2 .panel p{font-size:calc(var(--u)*1.6)}
+  .s4>.note{display:none}
+  .three{grid-template-columns:1fr;gap:calc(var(--u)*1.4)}
+  .card{flex-direction:row;flex-wrap:wrap;align-items:center;gap:calc(var(--u)*.4) calc(var(--u)*2)}
+  .card .ic{width:calc(var(--u)*4.6);height:calc(var(--u)*4.6)}
+  .s3 .card p{display:none}
+  .s4 h2{display:none}
+  .who .chip{font-size:calc(var(--u)*1.6)}
+  .flow{grid-template-columns:1fr;gap:calc(var(--u)*1.2)}
+  .flow::before,.flow::after{left:calc(var(--u)*2.9);right:auto;top:calc(var(--u)*2.9);bottom:calc(var(--u)*2.9);width:calc(var(--u)*.3);height:auto}
+  .slide.active .flow::after{animation:growY 4s .6s ease-in-out backwards}
+  .flow::after{transform-origin:top}
+  .fs{display:grid;grid-template-columns:calc(var(--u)*5.8) 1fr;column-gap:calc(var(--u)*2);align-items:center}
+  .fs .nd{grid-row:1 / span 2}
+  .fs h3{margin:0;font-size:calc(var(--u)*2.1)}
+  .fs p{font-size:calc(var(--u)*1.55)}
+  .s5 h2{display:none}
+  .orbit{width:100%;aspect-ratio:auto;display:flex;flex-wrap:wrap;gap:calc(var(--u)*1)}
+  .orbit svg,.orbit .core{display:none}
+  .orbit .sat{position:static;transform:none;font-size:calc(var(--u)*1.7)}
+  .s6 .row{gap:calc(var(--u)*2)}
+  .radar{width:calc(var(--u)*22);align-self:center}
+  .s7 .sub{display:none}
+  .s7 h2{display:none}
+  .lv span{font-size:calc(var(--u)*1.5)}
+  .gate{font-size:calc(var(--u)*1.5);padding:calc(var(--u)*1.2) calc(var(--u)*1.6)}
+  .s7 .row{gap:calc(var(--u)*2)}
+  .stairs{height:calc(var(--u)*19);gap:calc(var(--u)*1.2)}
+  .st{padding:calc(var(--u)*1.2) calc(var(--u)*1.2)}
+  .st h3{font-size:calc(var(--u)*1.55)}
+  .st p{display:none}
+  .s8 h2{font-size:calc(var(--u)*3.6)}
+  .li{font-size:calc(var(--u)*1.65)}
+  .s9 h2{display:none}
+  .s9 .note{display:none}
+  .li+.li{margin-top:calc(var(--u)*.6)}
+  .split{grid-template-columns:1fr;gap:calc(var(--u)*1.6)}
+  .dv{width:auto;height:calc(var(--u)*.3);background:repeating-linear-gradient(to right,rgba(255,255,255,.4) 0,rgba(255,255,255,.4) calc(var(--u)*.8),transparent calc(var(--u)*.8),transparent calc(var(--u)*1.5))}
+  .dv span{writing-mode:horizontal-tb;padding:0 calc(var(--u)*.8)}
+  .slide.active .dv{animation:grow 1s .3s ease-out backwards}
+  .s10 h2{display:none}
+  .s10 .panel p{font-size:calc(var(--u)*1.6)}
+  .s10>.note{display:none}
+  .cover{display:none}
+  .s11 h2{font-size:calc(var(--u)*3.8)}
+  .s12 .row{gap:calc(var(--u)*1.6)}
+  .pins{display:none}
+  .cnt{font-size:calc(var(--u)*6.4)}
+  .s12 h2,.s12 .sub{display:none}
+  .s12 .card p{display:none}
+  .rk{grid-template-columns:1fr;gap:calc(var(--u)*1.2)}
+  .rc{padding:calc(var(--u)*1.4) calc(var(--u)*2);gap:calc(var(--u)*.4)}
+  .rc .tag,.rc .ar,.rc .rsk{display:none}
+  .rc p{font-size:calc(var(--u)*1.55)}
+  .rc h3{font-size:calc(var(--u)*1.95);min-height:0}
+  .s13 h2{display:none}
+  .trio{gap:calc(var(--u)*.8);white-space:normal;flex-wrap:wrap}
+  .trio span{font-size:calc(var(--u)*1.45);letter-spacing:.06em}
+  .s14 h1{font-size:calc(var(--u)*5.4)}
+  .s15 h1{font-size:calc(var(--u)*6.2)}
+  .srcs{font-size:calc(var(--u)*1.55)}
+  .count{min-width:0;flex:1}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+</style>
+<div class="app" id="app">
+  <div class="stage" id="stage">
+    <div class="amb" id="amb" aria-hidden="true"></div>
+    <div class="brand"><i></i>Conexão Social</div>
+    <div class="chap" id="chap" aria-hidden="true">
+      <span><b>01</b><i>O problema</i></span>
+      <span><b>02</b><i>A rede</i></span>
+      <span><b>03</b><i>A confiança</i></span>
+      <span><b>04</b><i>A sustentação</i></span>
+      <span><b>05</b><i>O começo</i></span>
+    </div>
+
+    <!-- 1 abertura -->
+    <section class="slide s1 active" data-dur="14000" data-ch="0" aria-label="Abertura">
+      <div class="row top">
+        <div class="col">
+          <p class="eyebrow a" style="--d:.1s">Proposta inicial</p>
+          <h1 class="a" style="--d:.25s">Conexão<br>Social</h1>
+          <p class="lead a" style="--d:.45s">Conectando recursos, pessoas e iniciativas que transformam realidades.</p>
+          <div class="road">
+            <span class="p" style="--d:1s"><b>01</b>O problema</span>
+            <span class="p" style="--d:1.25s"><b>02</b>A rede</span>
+            <span class="p" style="--d:1.5s"><b>03</b>A confiança</span>
+            <span class="p" style="--d:1.75s"><b>04</b>A sustentação</span>
+            <span class="p" style="--d:2s"><b>05</b>O começo</span>
+          </div>
+        </div>
+        <div class="net"><svg viewBox="0 0 100 62" aria-hidden="true"><path class="ln l" pathLength="1" d="M10,8 L43,30" style="--d:0.5s"/><path class="ln l" pathLength="1" d="M10,22 L43,30" style="--d:0.75s"/><path class="ln l" pathLength="1" d="M10,38 L43,30" style="--d:1.0s"/><path class="ln l" pathLength="1" d="M10,52 L43,30" style="--d:1.25s"/><path class="ln r" pathLength="1" d="M57,30 L90,8" style="--d:1.6s"/><path class="ln r" pathLength="1" d="M57,30 L90,22" style="--d:1.85s"/><path class="ln r" pathLength="1" d="M57,30 L90,38" style="--d:2.1s"/><path class="ln r" pathLength="1" d="M57,30 L90,52" style="--d:2.35s"/><g class="nodes"><circle class="nl" cx="10" cy="8" r="3" style="--d:0.2s"/><circle class="nl" cx="10" cy="22" r="3" style="--d:0.4s"/><circle class="nl" cx="10" cy="38" r="3" style="--d:0.6000000000000001s"/><circle class="nl" cx="10" cy="52" r="3" style="--d:0.8s"/><circle class="nr" cx="90" cy="8" r="3" style="--d:1.3s"/><circle class="nr" cx="90" cy="22" r="3" style="--d:1.5s"/><circle class="nr" cx="90" cy="38" r="3" style="--d:1.7000000000000002s"/><circle class="nr" cx="90" cy="52" r="3" style="--d:1.9000000000000001s"/><circle class="halo" cx="50" cy="30" r="7"/><circle class="hub" cx="50" cy="30" r="7" style="--d:1.2s"/></g><text x="50" y="31.3" text-anchor="middle" style="fill:var(--ochre);font-size:2.6px;letter-spacing:0;text-transform:none">Conexão</text><circle class="pk" r="1" cx="0" cy="0" style="--x1:10px;--y1:8px;--x2:46px;--y2:30px;--t:2.6s;--d:2.4s"/><circle class="pk" r="1" cx="0" cy="0" style="--x1:10px;--y1:22px;--x2:46px;--y2:30px;--t:2.6s;--d:3.05s"/><circle class="pk" r="1" cx="0" cy="0" style="--x1:10px;--y1:38px;--x2:46px;--y2:30px;--t:2.6s;--d:3.7s"/><circle class="pk" r="1" cx="0" cy="0" style="--x1:10px;--y1:52px;--x2:46px;--y2:30px;--t:2.6s;--d:4.35s"/><circle class="pk" r="1" cx="0" cy="0" style="--x1:54px;--y1:30px;--x2:90px;--y2:8px;--t:2.6s;--d:3.0s"/><circle class="pk" r="1" cx="0" cy="0" style="--x1:54px;--y1:30px;--x2:90px;--y2:22px;--t:2.6s;--d:3.65s"/><circle class="pk" r="1" cx="0" cy="0" style="--x1:54px;--y1:30px;--x2:90px;--y2:38px;--t:2.6s;--d:4.3s"/><circle class="pk" r="1" cx="0" cy="0" style="--x1:54px;--y1:30px;--x2:90px;--y2:52px;--t:2.6s;--d:4.95s"/><text x="0" y="60" text-anchor="start">Apoiadores</text><text x="100" y="60" text-anchor="end">Projetos</text></svg></div>
+      </div>
+      <p class="cap">A Conexão Social é uma plataforma para aproximar quem quer apoiar causas sociais de quem realiza projetos e precisa de apoio.</p>
+    </section>
+
+    <!-- 2 problema -->
+    <section class="slide s2" data-dur="26000" data-ch="1" aria-label="O problema">
+      <div class="col">
+        <p class="eyebrow a">O problema</p>
+        <h2 class="a" style="--d:.15s">Há quem queira ajudar e há quem precise de ajuda, mas os dois não se encontram.</h2>
+      </div>
+      <div class="gapviz f" style="--d:.3s"><svg viewBox="0 0 100 13.6" aria-hidden="true"><circle class="dl pp" cx="4" cy="3" r="1.2" style="--d:0.2s"/><circle class="dl pp" cx="9" cy="3" r="1.2" style="--d:0.27s"/><circle class="dl pp" cx="14" cy="3" r="1.2" style="--d:0.34s"/><circle class="dl pp" cx="19" cy="3" r="1.2" style="--d:0.41000000000000003s"/><circle class="dl pp" cx="24" cy="3" r="1.2" style="--d:0.48000000000000004s"/><circle class="dl pp" cx="29" cy="3" r="1.2" style="--d:0.55s"/><circle class="dl pp" cx="6.5" cy="7.6" r="1.2" style="--d:0.6200000000000001s"/><circle class="dl pp" cx="11.5" cy="7.6" r="1.2" style="--d:0.6900000000000001s"/><circle class="dl pp" cx="16.5" cy="7.6" r="1.2" style="--d:0.76s"/><circle class="dl pp" cx="21.5" cy="7.6" r="1.2" style="--d:0.8300000000000001s"/><circle class="dl pp" cx="26.5" cy="7.6" r="1.2" style="--d:0.9000000000000001s"/><circle class="dr pp" cx="96" cy="3" r="1.2" style="--d:0.6s"/><circle class="dr pp" cx="91" cy="3" r="1.2" style="--d:0.6699999999999999s"/><circle class="dr pp" cx="86" cy="3" r="1.2" style="--d:0.74s"/><circle class="dr pp" cx="81" cy="3" r="1.2" style="--d:0.81s"/><circle class="dr pp" cx="76" cy="3" r="1.2" style="--d:0.88s"/><circle class="dr pp" cx="71" cy="3" r="1.2" style="--d:0.95s"/><circle class="dr pp" cx="93.5" cy="7.6" r="1.2" style="--d:1.02s"/><circle class="dr pp" cx="88.5" cy="7.6" r="1.2" style="--d:1.09s"/><circle class="dr pp" cx="83.5" cy="7.6" r="1.2" style="--d:1.1600000000000001s"/><circle class="dr pp" cx="78.5" cy="7.6" r="1.2" style="--d:1.23s"/><circle class="dr pp" cx="73.5" cy="7.6" r="1.2" style="--d:1.3s"/><line class="gl2" x1="36" y1="5.3" x2="64" y2="5.3"/><text class="q" x="50" y="9" text-anchor="middle">?</text><text class="lb" x="2" y="12.6" text-anchor="start">Quem quer apoiar</text><text class="lb" x="98" y="12.6" text-anchor="end">Quem precisa de apoio</text></svg></div>
+      <div class="duo">
+        <div class="panel a" style="--d:1.4s">
+          <h3>Quem quer apoiar</h3>
+          <p>Pessoas e empresas dispostas a contribuir, mas sem saber onde achar iniciativas confiáveis.</p>
+        </div>
+        <div class="panel a" style="--d:2.2s">
+          <h3>Quem realiza projetos</h3>
+          <p>Projetos com impacto real, mas com dificuldade para apresentar necessidades e achar parceiros.</p>
+        </div>
+      </div>
+      <p class="cap">Existe intenção de ajudar e existem projetos que precisam de apoio, mas falta um processo simples e confiável entre eles.</p>
+    </section>
+
+    <!-- 3 oportunidade -->
+    <section class="slide s3" data-dur="24000" data-ch="1" aria-label="A oportunidade">
+      <div class="col">
+        <p class="eyebrow a">A oportunidade</p>
+        <h2 class="a" style="--d:.15s">Transformar o primeiro contato em uma parceria bem definida.</h2>
+      </div>
+      <div class="gapviz f" style="--d:.3s"><svg viewBox="0 0 100 13.6" aria-hidden="true"><circle class="dl pp" cx="4" cy="3" r="1.2" style="--d:0.2s"/><circle class="dl pp" cx="9" cy="3" r="1.2" style="--d:0.27s"/><circle class="dl pp" cx="14" cy="3" r="1.2" style="--d:0.34s"/><circle class="dl pp" cx="19" cy="3" r="1.2" style="--d:0.41000000000000003s"/><circle class="dl pp" cx="24" cy="3" r="1.2" style="--d:0.48000000000000004s"/><circle class="dl pp" cx="29" cy="3" r="1.2" style="--d:0.55s"/><circle class="dl pp" cx="6.5" cy="7.6" r="1.2" style="--d:0.6200000000000001s"/><circle class="dl pp" cx="11.5" cy="7.6" r="1.2" style="--d:0.6900000000000001s"/><circle class="dl pp" cx="16.5" cy="7.6" r="1.2" style="--d:0.76s"/><circle class="dl pp" cx="21.5" cy="7.6" r="1.2" style="--d:0.8300000000000001s"/><circle class="dl pp" cx="26.5" cy="7.6" r="1.2" style="--d:0.9000000000000001s"/><circle class="dr pp" cx="96" cy="3" r="1.2" style="--d:0.6s"/><circle class="dr pp" cx="91" cy="3" r="1.2" style="--d:0.6699999999999999s"/><circle class="dr pp" cx="86" cy="3" r="1.2" style="--d:0.74s"/><circle class="dr pp" cx="81" cy="3" r="1.2" style="--d:0.81s"/><circle class="dr pp" cx="76" cy="3" r="1.2" style="--d:0.88s"/><circle class="dr pp" cx="71" cy="3" r="1.2" style="--d:0.95s"/><circle class="dr pp" cx="93.5" cy="7.6" r="1.2" style="--d:1.02s"/><circle class="dr pp" cx="88.5" cy="7.6" r="1.2" style="--d:1.09s"/><circle class="dr pp" cx="83.5" cy="7.6" r="1.2" style="--d:1.1600000000000001s"/><circle class="dr pp" cx="78.5" cy="7.6" r="1.2" style="--d:1.23s"/><circle class="dr pp" cx="73.5" cy="7.6" r="1.2" style="--d:1.3s"/><path class="br" pathLength="1" d="M33,5.3 Q50,-1.5 67,5.3"/><path class="br" pathLength="1" d="M33,5.3 L67,5.3" style="opacity:.0"/><text class="lb" x="2" y="12.6" text-anchor="start">Quem quer apoiar</text><text class="lb" x="98" y="12.6" text-anchor="end">Quem precisa de apoio</text></svg></div>
+      <div class="three">
+        <div class="card a" style="--d:1.6s">
+          <div class="top"><svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M8 14h32M8 24h32M8 34h20"/></svg><h3>Organizar informações</h3></div>
+          <p>Reunir o que cada projeto faz e precisa.</p>
+        </div>
+        <div class="card a" style="--d:2.3s">
+          <div class="top"><svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><circle cx="21" cy="21" r="12"/><path d="m30 30 12 12"/></svg><h3>Facilitar a descoberta</h3></div>
+          <p>Ajudar o apoiador a achar iniciativas.</p>
+        </div>
+        <div class="card a" style="--d:3s">
+          <div class="top"><svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><circle cx="18" cy="24" r="11"/><circle cx="30" cy="24" r="11"/></svg><h3>Apoiar o contato</h3></div>
+          <p>Ajudar a conversa a virar acordo.</p>
+        </div>
+      </div>
+      <p class="cap">A Conexão Social atua nesse espaço: organiza, facilita a descoberta e apoia o primeiro contato.</p>
+    </section>
+
+    <!-- 4 participantes -->
+    <section class="slide s4" data-dur="26000" data-ch="2" aria-label="Quem participa da rede">
+      <div class="col">
+        <p class="eyebrow a">Quem participa</p>
+        <h2 class="a" style="--d:.15s">Uma rede com dois lados.</h2>
+      </div>
+      <div class="duo who">
+        <div class="panel a" style="--d:.5s">
+          <span class="tag o">Apoiadores</span>
+          <div class="chips">
+            <span class="chip p" style="--d:.9s">Pessoas físicas</span><span class="chip p" style="--d:1.05s">Empresas</span><span class="chip p" style="--d:1.2s">Empreendedores</span><span class="chip p" style="--d:1.35s">Marcas</span><span class="chip p" style="--d:1.5s">Institutos</span><span class="chip p" style="--d:1.65s">Fundações</span>
+          </div>
+        </div>
+        <div class="panel a" style="--d:1.2s">
+          <span class="tag">Projetos</span>
+          <div class="chips">
+            <span class="chip alt p" style="--d:1.7s">Organizações formalizadas</span><span class="chip alt p" style="--d:1.85s">Iniciativas comunitárias</span><span class="chip alt p" style="--d:2s">Coletivos</span><span class="chip alt p" style="--d:2.15s">Projetos independentes</span>
+          </div>
+          <p class="note">Quem não tem personalidade jurídica não é excluído automaticamente.</p>
+        </div>
+      </div>
+      <p class="note f" style="--d:3s">Todos informam localização, causas de interesse, formas de apoio e capacidade de contribuição.</p>
+      <p class="cap">Participam apoiadores de vários perfis e projetos de diferentes graus de formalização.</p>
+    </section>
+
+    <!-- 5 como funciona -->
+    <section class="slide s5" data-dur="28000" data-ch="2" aria-label="Como funciona">
+      <div class="col">
+        <p class="eyebrow a">Como funciona</p>
+        <h2 class="a" style="--d:.15s">Do primeiro contato à avaliação da parceria.</h2>
+      </div>
+      <div class="flow">
+        <div class="fs"><span class="nd" style="--d:.6s">1</span><h3 style="--d:.9s">Identificar</h3><p style="--d:1s">Recebe as iniciativas interessadas em participar.</p></div>
+        <div class="fs"><span class="nd" style="--d:1.6s">2</span><h3 style="--d:1.9s">Organizar</h3><p style="--d:2s">Reúne atuação, público, objetivos e necessidades, e orienta a apresentação.</p></div>
+        <div class="fs"><span class="nd" style="--d:2.6s">3</span><h3 style="--d:2.9s">Aproximar</h3><p style="--d:3s">Busca apoiadores com interesses e recursos compatíveis.</p></div>
+        <div class="fs"><span class="nd" style="--d:3.6s">4</span><h3 style="--d:3.9s">Alinhar</h3><p style="--d:4s">Define expectativas e responsabilidades das duas partes.</p></div>
+        <div class="fs"><span class="nd" style="--d:4.6s">5</span><h3 style="--d:4.9s">Acompanhar</h3><p style="--d:5s">Segue a colaboração até a avaliação.</p></div>
+      </div>
+      <p class="cap">São cinco etapas: identificar, organizar, aproximar, alinhar e acompanhar a parceria.</p>
+    </section>
+
+    <!-- 6 tipos de apoio -->
+    <section class="slide s6" data-dur="24000" data-ch="2" aria-label="Formas de apoio">
+      <div class="row top">
+        <div class="col">
+          <p class="eyebrow a">Formas de apoio</p>
+          <h2 class="a" style="--d:.15s">Apoio não é só dinheiro.</h2>
+          <p class="sub a" style="--d:.4s">Cada projeto pode receber a contribuição que mais combina com sua necessidade.</p>
+        </div>
+        <div class="orbit"><svg viewBox="0 0 100 62" aria-hidden="true"><path class="sp" pathLength="1" d="M50,31 L50.0,5.0" style="--d:0.70s"/><path class="sp" pathLength="1" d="M50,31 L73.3,12.6" style="--d:1.00s"/><path class="sp" pathLength="1" d="M50,31 L83.0,31.0" style="--d:1.30s"/><path class="sp" pathLength="1" d="M50,31 L73.3,49.4" style="--d:1.60s"/><path class="sp" pathLength="1" d="M50,31 L50.0,57.0" style="--d:1.90s"/><path class="sp" pathLength="1" d="M50,31 L26.7,49.4" style="--d:2.20s"/><path class="sp" pathLength="1" d="M50,31 L17.0,31.0" style="--d:2.50s"/><path class="sp" pathLength="1" d="M50,31 L26.7,12.6" style="--d:2.80s"/></svg><div class="core">Apoio</div><span class="sat" style="left:50.0%;top:8.1%;--d:1.20s">Apoio financeiro</span><span class="sat" style="left:73.3%;top:20.3%;--d:1.50s">Doação de materiais</span><span class="sat" style="left:83.0%;top:50.0%;--d:1.80s">Prestação de serviços</span><span class="sat" style="left:73.3%;top:79.7%;--d:2.10s">Conhecimento técnico</span><span class="sat" style="left:50.0%;top:91.9%;--d:2.40s">Voluntariado</span><span class="sat" style="left:26.7%;top:79.7%;--d:2.70s">Divulgação</span><span class="sat" style="left:17.0%;top:50.0%;--d:3.00s">Patrocínio</span><span class="sat" style="left:26.7%;top:20.3%;--d:3.30s">Parcerias institucionais</span></div>
+      </div>
+      <p class="cap">O apoio pode ser financeiro, de materiais, serviços, conhecimento, voluntariado, divulgação, patrocínio ou parceria institucional.</p>
+    </section>
+
+    <!-- 7 social match -->
+    <section class="slide s7" data-dur="30000" data-ch="3" aria-label="Social Match">
+      <div class="row top">
+        <div class="radar"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="rg" cx="50" cy="50" r="46" style="--d:0.2s"/><circle class="rg" cx="50" cy="50" r="34" style="--d:0.55s"/><circle class="rg" cx="50" cy="50" r="22" style="--d:0.8999999999999999s"/><circle class="rg" cx="50" cy="50" r="10" style="--d:1.2499999999999998s"/><circle class="pn" cx="56" cy="43" r="2.1" style="--d:1.6s"/><circle class="pn" cx="43" cy="57" r="2.1" style="--d:1.82s"/><circle class="pn" cx="32" cy="39" r="2.1" style="--d:2.04s"/><circle class="pn" cx="67" cy="66" r="2.1" style="--d:2.2600000000000002s"/><circle class="pn" cx="22" cy="60" r="2.1" style="--d:2.48s"/><circle class="pn" cx="76" cy="31" r="2.1" style="--d:2.7s"/><circle class="pn" cx="54" cy="17" r="2.1" style="--d:2.92s"/><circle class="pn" cx="14" cy="30" r="2.1" style="--d:3.14s"/><circle class="pn" cx="88" cy="66" r="2.1" style="--d:3.3600000000000003s"/><circle class="pn" cx="70" cy="89" r="2.1" style="--d:3.58s"/><circle class="me" cx="50" cy="50" r="3.4"/><circle class="bd2" cx="50" cy="40" r="3.4"/><text x="50" y="41.3">1</text><circle class="bd2" cx="50" cy="28" r="3.4"/><text x="50" y="29.3">2</text><circle class="bd2" cx="50" cy="16" r="3.4"/><text x="50" y="17.3">3</text><circle class="bd2" cx="50" cy="4" r="3.4"/><text x="50" y="5.3">4</text></svg></div>
+        <div class="col">
+          <p class="eyebrow a">Geolocalização e recomendação</p>
+          <h2 class="a" style="--d:.15s">Social Match.</h2>
+          <div class="lv a" style="--d:.6s">
+            <span><b>1</b>Proximidade</span><span><b>2</b>Região metropolitana</span><span><b>3</b>Alcance nacional</span><span><b>4</b>Iniciativas internacionais</span>
+          </div>
+          <p class="sub a" style="--d:1.2s">Além do lugar, conta a compatibilidade entre causa, tipo de contribuição, capacidade e necessidades.</p>
+          <div class="gate a" style="--d:2.4s"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="10" y="21" width="28" height="20" rx="3"/><path d="M16 21v-6a8 8 0 0 1 16 0v6"/></svg><span><b>Credibilidade é critério mínimo.</b> Uma nota alta em outros fatores não compensa a falta de validação.</span></div>
+        </div>
+      </div>
+      <p class="cap">O Social Match prioriza conexões relevantes, e a validação do projeto funciona como condição mínima de confiança.</p>
+    </section>
+
+    <!-- 8 curadoria -->
+    <section class="slide s8" data-dur="28000" data-ch="3" aria-label="Curadoria e validação">
+      <div class="col">
+        <p class="eyebrow a">Curadoria e validação</p>
+        <h2 class="a" style="--d:.15s">Níveis claros de acompanhamento, cada um com critérios próprios.</h2>
+      </div>
+      <div class="stairs">
+        <div class="st" style="--h:52%;--d:.6s"><span class="tag o">Nível 1</span><h3>Iniciativa em avaliação</h3></div>
+        <div class="st s2" style="--h:76%;--d:1.2s"><span class="tag">Nível 2</span><h3>Projeto validado</h3></div>
+        <div class="st" style="--h:100%;--d:1.8s"><span class="tag o">Nível 3</span><h3>Instituição verificada</h3></div>
+      </div>
+      <div class="chips f" style="--d:2.8s">
+        <span class="chip">Histórico de atuação</span><span class="chip alt">Responsáveis identificados</span><span class="chip">Objetivos</span><span class="chip alt">Público atendido</span><span class="chip">Documentos</span><span class="chip alt">Referências</span><span class="chip">Evidências</span>
+      </div>
+      <p class="cap">A curadoria não só aprova ou reprova: também orienta metas, orçamento e apresentação de resultados.</p>
+    </section>
+
+    <!-- 9 parcerias e acompanhamento -->
+    <section class="slide s9" data-dur="26000" data-ch="3" aria-label="Parcerias e transparência">
+      <div class="col">
+        <p class="eyebrow a">Parcerias e transparência</p>
+        <h2 class="a" style="--d:.15s">Construir a parceria e acompanhar depois.</h2>
+      </div>
+      <div class="duo">
+        <div class="panel a" style="--d:.5s">
+          <h3>Da necessidade à proposta</h3>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:1.1s"/></svg>Escopo claro do que será oferecido e recebido</div>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:1.6s"/></svg>Orçamento</div>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:2.1s"/></svg>Prazo</div>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:2.6s"/></svg>Resultado esperado</div>
+        </div>
+        <div class="panel a" style="--d:1.2s">
+          <h3>Acompanhamento</h3>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:2.0s"/></svg>Entregas previstas e registros</div>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:2.5s"/></svg>Indicadores adequados a cada projeto</div>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:3.0s"/></svg>Relatos dos responsáveis</div>
+          <div class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path pathLength="1" d="M4 12.5l5 5L20 6.5" style="--d:3.5s"/></svg>Avaliações dos apoiadores</div>
+        </div>
+      </div>
+      <p class="cap">A plataforma aproxima, orienta e acompanha, e avalia para melhorar a rede, sem impor métricas genéricas.</p>
+    </section>
+
+    <!-- 10 modelo de negócio -->
+    <section class="slide s10" data-dur="26000" data-ch="4" aria-label="Sustentabilidade financeira">
+      <div class="col">
+        <p class="eyebrow a">Sustentabilidade financeira</p>
+        <h2 class="a" style="--d:.15s">A receita da plataforma fica separada dos recursos dos projetos.</h2>
+      </div>
+      <div class="split">
+        <div class="panel a" style="--d:.7s">
+          <span class="tag o">Receita da plataforma</span>
+          <div class="flowline" style="--c:var(--ochre);--d:1.3s"></div>
+          <p>Planos e serviços para empresas: gestão de programas de responsabilidade social, identificação de projetos, estruturação de parcerias, acompanhamento e relatórios de impacto.</p>
+        </div>
+        <div class="dv" aria-hidden="true"><span>Separação clara</span></div>
+        <div class="panel a" style="--d:1.5s">
+          <span class="tag">Recursos dos projetos</span>
+          <div class="flowline" style="--c:var(--sage);--d:2.1s"></div>
+          <p>Na etapa inicial, o mais adequado pode ser não cobrar comissão sobre doações, para evitar conflitos de interesse e deixar tudo mais fácil de entender.</p>
+        </div>
+      </div>
+      <p class="note f" style="--d:3s">Qualquer modelo será analisado nos aspectos jurídico, tributário e contábil, e seguirá as regras de proteção de dados.</p>
+      <p class="cap">Para durar, a plataforma precisa de um modelo financeiro que não comprometa sua finalidade social nem a confiança.</p>
+    </section>
+
+    <!-- 11 Museu de Vidas -->
+    <section class="slide s11" data-dur="22000" data-ch="4" aria-label="Museu de Vidas como referência">
+      <div class="row top">
+        <div class="col">
+          <p class="eyebrow a">Referência inicial</p>
+          <h2 class="a" style="--d:.15s">O Museu de Vidas mostra o tipo de projeto que queremos apoiar.</h2>
+          <p class="sub a" style="--d:.5s">Histórias de vida de idosos em instituições de longa permanência viram livros que preservam memórias e aproximam gerações.</p>
+          <div class="chips f" style="--d:1.2s">
+            <span class="chip">Organizar a proposta</span><span class="chip alt">Definir objetivos</span><span class="chip">Identificar parceiros</span><span class="chip alt">Buscar recursos</span><span class="chip">Comunicar o valor</span>
+          </div>
+          <p class="note f" style="--d:2.2s">É uma referência de projeto, não a plataforma nem uma iniciativa já concluída.</p>
+        </div>
+        <div class="cover" aria-hidden="true"><b>Museu<br>de Vidas</b><small>Histórias que não podem ser esquecidas</small></div>
+      </div>
+      <p class="cap">Ele ilustra necessidades comuns: proposta, objetivos, parceiros, recursos e comunicação do valor da iniciativa.</p>
+    </section>
+
+    <!-- 12 piloto -->
+    <section class="slide s12" data-dur="28000" data-ch="5" aria-label="Validação e projeto piloto">
+      <div class="row top">
+        <div class="col">
+          <p class="eyebrow a">Por onde começar</p>
+          <h2 class="a" style="--d:.15s">Validar antes de construir a plataforma completa.</h2>
+          <p class="sub a" style="--d:.4s">Piloto em Belo Horizonte e região metropolitana.</p>
+        </div>
+        <div class="col" style="align-items:flex-start;gap:1u">
+          <div class="cnt f" style="--d:.4s"><span data-to="10" data-dur="1800" data-delay="500">0</span> a <span data-to="15" data-dur="1800" data-delay="500">0</span><small>projetos</small></div>
+          <div class="pins" aria-hidden="true"><i class="" style="--k:0"></i><i class="" style="--k:1"></i><i class="" style="--k:2"></i><i class="" style="--k:3"></i><i class="" style="--k:4"></i><i class="" style="--k:5"></i><i class="" style="--k:6"></i><i class="" style="--k:7"></i><i class="" style="--k:8"></i><i class="" style="--k:9"></i><i class="o" style="--k:10"></i><i class="o" style="--k:11"></i><i class="o" style="--k:12"></i><i class="o" style="--k:13"></i><i class="o" style="--k:14"></i></div>
+        </div>
+      </div>
+      <div class="three">
+        <div class="card a" style="--d:1.2s">
+          <div class="top"><svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true"><path d="M24 43s13-12 13-23a13 13 0 0 0-26 0c0 11 13 23 13 23z"/><circle cx="24" cy="20" r="4.5"/></svg><h3>Mapear</h3></div>
+          <p>Projetos de áreas distintas.</p>
+        </div>
+        <div class="card a" style="--d:2s">
+          <div class="top"><svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" aria-hidden="true"><path d="M8 10h32v22H20l-9 8v-8H8z"/></svg><h3>Conversar</h3></div>
+          <p>Com responsáveis e possíveis apoiadores.</p>
+        </div>
+        <div class="card a" style="--d:2.8s">
+          <div class="top"><svg class="ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="8" y="8" width="32" height="32" rx="4"/><path d="M15 20h18M15 28h12"/></svg><h3>Testar</h3></div>
+          <p>Site, base de dados e seleção manual.</p>
+        </div>
+      </div>
+      <p class="cap">Como hipótese inicial, mapear de 10 a 15 projetos e testar o método com ferramentas simples antes de investir em tecnologia.</p>
+    </section>
+
+    <!-- 13 riscos -->
+    <section class="slide s13" data-dur="28000" data-ch="5" aria-label="Riscos e pontos de atenção">
+      <div class="col">
+        <p class="eyebrow a">Riscos e pontos de atenção</p>
+        <h2 class="a" style="--d:.15s">Desafios que olhamos desde o início.</h2>
+      </div>
+      <div class="rk">
+        <div class="rc a" style="--d:.5s">
+          <span class="tag r">Risco 1</span><h3>Conquistar confiança</h3>
+          <p class="rsk">Critérios pouco claros afastam apoiadores e projetos.</p>
+          <i class="ar" style="--d:1.3s"></i>
+          <p class="mit"><b>Resposta:</b> critérios claros, consistentes e proporcionais.</p>
+        </div>
+        <div class="rc a" style="--d:1.2s">
+          <span class="tag r">Risco 2</span><h3>Equilibrar os dois lados</h3>
+          <p class="rsk">Cadastros que não viram parcerias efetivas.</p>
+          <i class="ar" style="--d:2s"></i>
+          <p class="mit"><b>Resposta:</b> atrair projetos e apoiadores com interesse real, em paralelo.</p>
+        </div>
+        <div class="rc a" style="--d:1.9s">
+          <span class="tag r">Risco 3</span><h3>Limites de atuação</h3>
+          <p class="rsk">Dúvida sobre recursos, acordos e entregas.</p>
+          <i class="ar" style="--d:2.7s"></i>
+          <p class="mit"><b>Resposta:</b> definir o papel da plataforma em cada etapa.</p>
+        </div>
+        <div class="rc a" style="--d:2.6s">
+          <span class="tag r">Risco 4</span><h3>Dados e promessas</h3>
+          <p class="rsk">Dados de pessoas atendidas e impacto não comprovado.</p>
+          <i class="ar" style="--d:3.4s"></i>
+          <p class="mit"><b>Resposta:</b> seguir a legislação e não prometer o que não se prova.</p>
+        </div>
+      </div>
+      <p class="cap">Confiança, equilíbrio entre os lados, limites de atuação e proteção de dados orientam as decisões desde o começo.</p>
+    </section>
+
+    <!-- 14 visão -->
+    <section class="slide s14" data-dur="14000" data-ch="0" aria-label="Visão de futuro">
+      <div class="row top">
+        <div class="col">
+          <p class="eyebrow a" style="--d:.1s">Visão de futuro</p>
+          <h1 class="a" style="--d:.25s">Da vontade de ajudar à ajuda que acontece.</h1>
+          <p class="lead a" style="--d:.6s">O valor está na qualidade das conexões e no apoio que elas geram.</p>
+          <div class="trio a" style="--d:1.2s"><span>Descobrir</span><span>Conectar</span><span>Acompanhar</span></div>
+        </div>
+        <div class="venn" aria-hidden="true">
+          <svg viewBox="0 0 100 60"><circle class="vl" cx="36" cy="30" r="24"/><circle class="vr" cx="64" cy="30" r="24"/><text x="23" y="31">Quem apoia</text><text x="77" y="31">Quem realiza</text><text class="ct" x="50" y="32">Parceria</text></svg>
+        </div>
+      </div>
+      <p class="cap">Queremos tornar mais simples e confiável o caminho entre a intenção de contribuir e a realização das iniciativas sociais.</p>
+    </section>
+
+    <!-- 15 perguntas -->
+    <section class="slide s15" data-dur="0" data-hold="1" data-ch="0" aria-label="Perguntas">
+      <div class="col">
+        <p class="eyebrow a">Obrigada pela atenção</p>
+        <h1 class="a" style="--d:.2s">Perguntas?</h1>
+      </div>
+      <div class="srcs f" style="--d:.8s">
+        <p><b>Fonte</b></p>
+        <p>Proposta inicial de desenvolvimento da Conexão Social, documento de concepção e direcionamento inicial.</p>
+        <p>O Museu de Vidas é citado como referência inicial de projeto.</p>
+      </div>
+      <p class="cap">Obrigada pela atenção. Vamos às perguntas.</p>
+    </section>
+  </div>
+
+  <div class="ctrl">
+    <button id="prev" aria-label="Slide anterior"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+    <button id="play" aria-label="Pausar avanço automático"><svg id="icPause" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg><svg id="icPlay" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M8 5v14l11-7z"/></svg></button>
+    <button id="next" aria-label="Próximo slide"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    <div class="segs" id="segs"></div>
+    <span class="count" id="count">1 / 15</span>
+    <button id="cc" aria-label="Legendas" aria-pressed="true">CC</button>
+    <button id="fs" aria-label="Tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var app = document.getElementById('app');
+  var stage = document.getElementById('stage');
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var segs = document.getElementById('segs');
+  var countEl = document.getElementById('count');
+  var playBtn = document.getElementById('play');
+  var icPause = document.getElementById('icPause');
+  var icPlay = document.getElementById('icPlay');
+  var chapSpans = Array.prototype.slice.call(document.querySelectorAll('#chap span'));
+  var idx = 0, elapsed = 0, epoch = 0, playing = !reduced, last = performance.now();
+  function $(id){ return document.getElementById(id); }
+
+  /* tempo total e acumulado */
+  var total = slides.reduce(function(s,el){ return s + (+el.dataset.dur || 0); }, 0);
+  var starts = []; (function(){ var a = 0; slides.forEach(function(el){ starts.push(a); a += (+el.dataset.dur || 0); }); })();
+  function mmss(ms){ var s = Math.round(ms/1000); return Math.floor(s/60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+  /* elementos gerados */
+  var amb = $('amb');
+  for(var a=0;a<16;a++){
+    var ai = document.createElement('i');
+    ai.style.setProperty('--x', ((a * 37 + 11) % 100) + '%');
+    ai.style.setProperty('--sz', (0.45 + ((a * 13) % 7) / 10).toFixed(2));
+    ai.style.setProperty('--t', (16 + (a * 5) % 14) + 's');
+    ai.style.setProperty('--dl', '-' + ((a * 3.3) % 20).toFixed(1) + 's');
+    amb.appendChild(ai);
+  }
+
+  /* legendas: uma palavra por vez */
+  slides.forEach(function(s){
+    var c = s.querySelector('.cap'); if(!c) return;
+    var words = c.textContent.trim().split(/\s+/); c.textContent = '';
+    words.forEach(function(w,i){
+      var sp = document.createElement('span'); sp.style.setProperty('--i', i); sp.textContent = w;
+      c.appendChild(sp); c.appendChild(document.createTextNode(' '));
+    });
+  });
+
+  /* barra segmentada */
+  var prevCh = -1;
+  slides.forEach(function(s,i){
+    var b = document.createElement('button'); b.className = 'seg';
+    var ch = +s.dataset.ch;
+    if(i > 0 && ch !== prevCh && ch > 0) b.classList.add('chs');
+    prevCh = ch;
+    b.setAttribute('aria-label','Ir para o slide ' + (i+1) + ': ' + s.getAttribute('aria-label'));
+    b.title = (i+1) + '. ' + s.getAttribute('aria-label');
+    b.innerHTML = '<span></span>';
+    b.addEventListener('click', function(){ go(i); });
+    segs.appendChild(b);
+  });
+
+  function dur(){ return +slides[idx].dataset.dur || 0; }
+  function paint(){
+    var kids = segs.children;
+    for(var i=0;i<kids.length;i++){
+      var w = 0;
+      if(i < idx) w = 100;
+      else if(i === idx) w = dur() ? Math.min(100, elapsed/dur()*100) : 100;
+      kids[i].firstChild.style.width = w + '%';
+    }
+    var now = Math.min(total, starts[idx] + Math.min(elapsed, dur()));
+    countEl.textContent = (idx+1) + ' / ' + slides.length + ' · ' + mmss(now) + ' / ' + mmss(total);
+  }
+  function setIcons(){
+    icPause.hidden = !playing; icPlay.hidden = playing;
+    playBtn.setAttribute('aria-label', playing ? 'Pausar avanço automático' : 'Reproduzir');
+  }
+
+  /* contadores */
+  var counters = [];
+  function fmt(v, dec){ return v.toFixed(dec).replace('.', ','); }
+  function startCounters(slide){
+    counters = [];
+    Array.prototype.forEach.call(slide.querySelectorAll('[data-to]'), function(el){
+      var to = parseFloat(el.dataset.to), dec = +el.dataset.dec || 0;
+      if(reduced){ el.textContent = fmt(to, dec); return; }
+      counters.push({el:el, to:to, dec:dec, t:-(+el.dataset.delay || 0), dur:+el.dataset.dur || 1600});
+      el.textContent = fmt(0, dec);
+    });
+  }
+
+  function go(n){
+    n = Math.max(0, Math.min(slides.length-1, n));
+    idx = n; elapsed = 0; epoch++;
+    slides.forEach(function(s,i){ s.classList.toggle('active', i === n); s.setAttribute('aria-hidden', i === n ? 'false' : 'true'); });
+    var ch = +slides[n].dataset.ch;
+    chapSpans.forEach(function(sp,i){
+      sp.classList.toggle('on', i + 1 === ch);
+      sp.classList.toggle('done', ch > 0 && i + 1 < ch);
+    });
+    startCounters(slides[n]);
+    if(slides[n].dataset.hold) playing = false;
+    paint(); setIcons();
+  }
+
+  function tick(now){
+    var dt = Math.min(now - last, 100); last = now;
+    counters.forEach(function(c){
+      c.t += dt;
+      var pr = Math.max(0, Math.min(1, c.t / c.dur)), e = 1 - Math.pow(1 - pr, 3);
+      c.el.textContent = fmt(c.to * e, c.dec);
+    });
+    if(playing){
+      elapsed += dt;
+      if(dur() && elapsed >= dur()){
+        if(idx < slides.length - 1) go(idx + 1);
+      }
+      paint();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  $('prev').addEventListener('click', function(){ go(idx - 1); });
+  $('next').addEventListener('click', function(){ go(idx + 1); });
+  playBtn.addEventListener('click', function(){
+    if(!playing && slides[idx].dataset.hold){ go(0); playing = true; setIcons(); return; }
+    playing = !playing; setIcons();
+  });
+  var fsBtn = $('fs');
+  if(!document.fullscreenEnabled) fsBtn.hidden = true;
+  function toggleFs(){
+    try{
+      if(document.fullscreenElement) document.exitFullscreen();
+      else app.requestFullscreen().catch(function(){});
+    }catch(e){}
+  }
+  fsBtn.addEventListener('click', toggleFs);
+  var ccBtn = $('cc');
+  function setCC(on){ stage.classList.toggle('nocap', !on); ccBtn.setAttribute('aria-pressed', on ? 'true' : 'false'); try{ localStorage.setItem('cs-cc', on ? '1' : '0'); }catch(e){} }
+  ccBtn.addEventListener('click', function(){ setCC(ccBtn.getAttribute('aria-pressed') !== 'true'); });
+  try{ if(localStorage.getItem('cs-cc') === '0') setCC(false); }catch(e){}
+  document.addEventListener('keydown', function(e){
+    var onBtn = e.target && e.target.tagName === 'BUTTON';
+    if(e.key === 'ArrowRight' || e.key === 'PageDown') go(idx + 1);
+    else if(e.key === 'ArrowLeft' || e.key === 'PageUp') go(idx - 1);
+    else if(e.key === ' ' && !onBtn){ e.preventDefault(); playBtn.click(); }
+    else if(e.key === 'c' || e.key === 'C') ccBtn.click();
+    else if(e.key === 'f' || e.key === 'F') toggleFs();
+  });
+
+  go(0);
+  requestAnimationFrame(function(t){ last = t; requestAnimationFrame(tick); });
+})();
+</script>
+
+</body></html>
